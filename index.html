@@ -710,7 +710,7 @@
     });
   }
 
-  // ── CLAUDE API CALL ──
+  // ── API CALL — hits local proxy which forwards to Mistral ──
   async function analyzeForm(frames, exercise) {
     setProgress(55, 'Sending to AI coach...');
 
@@ -724,35 +724,52 @@
     };
     const guide = guides[exercise] || 'Evaluate overall alignment, joint stacking, and movement quality.';
 
+    // Mistral multimodal format: image_url blocks with base64 data URIs
     const imgBlocks = frames.map(f => ({
-      type:   'image',
-      source: { type: 'base64', media_type: 'image/jpeg', data: f }
+      type: 'image_url',
+      image_url: `data:image/jpeg;base64,${f}`
     }));
 
-    imgBlocks.push({
-      type: 'text',
-      text: `Exercise: ${exercise}\n${guide}\n\nThese ${frames.length} frames are evenly spaced across the movement. Identify the single most critical frame (e.g. bottom of squat, peak load moment) then analyze form at that frame.\n\nReply ONLY with valid JSON — no markdown, no backticks, no extra text:\n{"score":75,"key_frame":3,"summary":"One sentence overall assessment.","positives":["specific good thing","specific good thing"],"corrections":[{"joint":"Body part","issue":"What is specifically wrong","fix":"Concrete coaching cue to fix it","severity":"major"},{"joint":"Body part","issue":"What is wrong","fix":"How to fix","severity":"minor"}],"drill":"Name: Description of one targeted corrective drill to practice."}`
-    });
+    const userContent = [
+      ...imgBlocks,
+      {
+        type: 'text',
+        text: `Exercise: ${exercise}\n${guide}\n\nThese ${frames.length} frames are evenly spaced across the movement. Identify the single most critical frame (e.g. bottom of squat, peak load moment) then analyze form at that frame.\n\nReply ONLY with valid JSON — no markdown, no backticks, no extra text:\n{"score":75,"key_frame":3,"summary":"One sentence overall assessment.","positives":["specific good thing","specific good thing"],"corrections":[{"joint":"Body part","issue":"What is specifically wrong","fix":"Concrete coaching cue to fix it","severity":"major"},{"joint":"Body part","issue":"What is wrong","fix":"How to fix","severity":"minor"}],"drill":"Name: Description of one targeted corrective drill to practice."}`
+      }
+    ];
 
     setProgress(65, 'AI is reviewing your form...');
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model:      'claude-sonnet-4-20250514',
+        model:      'pixtral-12b-2409',
         max_tokens: 1000,
-        system:     'You are an expert personal trainer and movement coach with deep knowledge of biomechanics and injury prevention. Analyze workout form from video frames with specific, actionable feedback. Respond ONLY with valid JSON — no preamble, no markdown, no backticks.',
-        messages:   [{ role: 'user', content: imgBlocks }]
+        messages: [
+          {
+            role:    'system',
+            content: 'You are an expert personal trainer and movement coach with deep knowledge of biomechanics and injury prevention. Analyze workout form from video frames with specific, actionable feedback. Respond ONLY with valid JSON — no preamble, no markdown, no backticks.'
+          },
+          {
+            role:    'user',
+            content: userContent
+          }
+        ]
       })
     });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || errData.error || `Server error ${res.status}`);
+    }
 
     setProgress(90, 'Processing results...');
 
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
+    if (data.error) throw new Error(data.error.message || data.error);
 
-    const raw   = data.content?.find(b => b.type === 'text')?.text || '{}';
+    const raw   = data.choices?.[0]?.message?.content || '{}';
     const clean = raw.replace(/```json|```/g, '').trim();
     return JSON.parse(clean);
   }
