@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Form.AI — AI Workout Coach</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #242424;
+    --border-light: #1e1e1e;
+    --accent: #C8FF00;
+    --accent-dim: rgba(200, 255, 0, 0.1);
+    --danger: #FF453A;
+    --danger-dim: rgba(255, 69, 58, 0.1);
+    --warning: #FF9F0A;
+    --warning-dim: rgba(255, 159, 10, 0.1);
+    --success: #32D74B;
+    --text: #F0F0F0;
+    --text-secondary: #888;
+    --text-muted: #444;
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-body: 'Barlow', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 48px 20px 80px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 480px;
+  }
+
+  /* Phase management */
+  .phase { display: none; }
+  .phase.active { display: block; }
+
+  /* ── UPLOAD PHASE ── */
+  .brand {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .brand-dot { color: var(--accent); }
+
+  .tagline {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+    font-weight: 300;
+  }
+
+  .drop-zone {
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface);
+    margin-bottom: 16px;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .drop-zone:hover,
+  .drop-zone.over {
+    border-color: var(--accent);
+    background: var(--surface2);
+  }
+  .drop-icon {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    color: var(--text-secondary);
+    font-size: 16px;
+    transition: border-color 0.2s;
+  }
+  .drop-zone:hover .drop-icon {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .drop-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .drop-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .preview-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    margin-bottom: 16px;
+  }
+  .preview-row video {
+    width: 80px;
+    height: 54px;
+    object-fit: cover;
+    border-radius: 6px;
+    background: #000;
+    flex-shrink: 0;
+  }
+  .preview-info p {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+  }
+  .preview-info span {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+  }
+
+  .ex-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .ex-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .ex-btn {
+    padding: 10px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--surface);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.15s;
+    text-align: center;
+    font-weight: 400;
+  }
+  .ex-btn:hover {
+    border-color: #444;
+    color: var(--text);
+  }
+  .ex-btn.sel {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 13px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-display);
+    letter-spacing: 0.5px;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:active { transform: scale(0.99); }
+  .btn-primary:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── PROCESSING PHASE ── */
+  .proc-wrap {
+    padding: 60px 0;
+    text-align: center;
+  }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .proc-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .proc-status {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    min-height: 18px;
+  }
+  .prog-bar {
+    background: var(--surface2);
+    border-radius: 100px;
+    height: 3px;
+    max-width: 260px;
+    margin: 0 auto 8px;
+    overflow: hidden;
+  }
+  .prog-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 100px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+  .prog-pct {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  /* ── RESULTS PHASE ── */
+  .res-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-ghost:hover {
+    border-color: #444;
+    color: var(--text);
+  }
+  .ex-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--text-secondary);
+    text-transform: capitalize;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--border);
+  }
+
+  .top-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .kf-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+    position: relative;
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .kf-card img {
+    width: 100%;
+    height: 100%;
+    min-height: 150px;
+    object-fit: cover;
+    display: block;
+  }
+  .kf-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.65);
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+  }
+
+  .score-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    gap: 10px;
+  }
+  .ring-wrap {
+    position: relative;
+    width: 96px;
+    height: 96px;
+  }
+  .ring-wrap svg {
+    width: 96px;
+    height: 96px;
+    transform: rotate(-90deg);
+  }
+  .r-bg {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 5;
+  }
+  .r-fg {
+    fill: none;
+    stroke-width: 5;
+    stroke-linecap: round;
+    stroke-dasharray: 264;
+    stroke-dashoffset: 264;
+    transition: stroke-dashoffset 1.3s cubic-bezier(0.34, 1.56, 0.64, 1), stroke 0.3s;
+  }
+  .r-num-wrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .r-num {
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--text);
+    font-family: var(--font-mono);
+    line-height: 1;
+  }
+  .r-label {
+    font-size: 8px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+    font-family: var(--font-display);
+    font-weight: 600;
+  }
+  .summary-txt {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.55;
+    font-weight: 300;
+  }
+
+  .fb-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .fb-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .fb-title {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .pos-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 7px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.45;
+    font-weight: 300;
+  }
+  .pos-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--success);
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  .corr-item {
+    margin-bottom: 10px;
+    padding: 11px 13px;
+    border-radius: 8px;
+    border-left: 2px solid;
+  }
+  .corr-item:last-child { margin-bottom: 0; }
+  .corr-item.major {
+    background: var(--danger-dim);
+    border-color: var(--danger);
+  }
+  .corr-item.minor {
+    background: var(--warning-dim);
+    border-color: var(--warning);
+  }
+  .corr-joint {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+    font-family: var(--font-display);
+  }
+  .corr-item.major .corr-joint { color: var(--danger); }
+  .corr-item.minor .corr-joint { color: var(--warning); }
+  .corr-issue {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 3px;
+    font-weight: 400;
+  }
+  .corr-fix {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 300;
+  }
+
+  .drill-txt {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.65;
+    font-weight: 300;
+  }
+
+  .empty-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .err-msg {
+    font-size: 13px;
+    color: var(--danger);
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--danger-dim);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 69, 58, 0.2);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── PHASE 1: UPLOAD ── -->
+  <div id="phase-upload" class="phase active">
+    <div class="brand">FORM<span class="brand-dot">.</span>AI</div>
+    <p class="tagline">Upload a workout clip — get personal training feedback.</p>
+
+    <div id="drop-zone" class="drop-zone">
+      <input type="file" id="file-input" accept="video/*" style="display:none">
+      <div class="drop-icon">▶</div>
+      <div class="drop-title">Drop video here</div>
+      <div class="drop-sub">or click to browse · MP4, MOV, WebM</div>
+    </div>
+
+    <div id="preview-row" class="preview-row" style="display:none">
+      <video id="preview-vid" muted playsinline></video>
+      <div class="preview-info">
+        <p id="vid-name">video.mp4</p>
+        <span id="vid-meta">—</span>
+      </div>
+    </div>
+
+    <p class="ex-label">Select exercise</p>
+    <div class="ex-grid">
+      <button class="ex-btn sel" data-ex="squat">Squat</button>
+      <button class="ex-btn" data-ex="deadlift">Deadlift</button>
+      <button class="ex-btn" data-ex="bench press">Bench press</button>
+      <button class="ex-btn" data-ex="pushup">Push-up</button>
+      <button class="ex-btn" data-ex="lunge">Lunge</button>
+      <button class="ex-btn" data-ex="overhead press">Overhead press</button>
+    </div>
+
+    <button id="analyze-btn" class="btn-primary" disabled>ANALYZE FORM →</button>
+  </div>
+
+  <!-- ── PHASE 2: PROCESSING ── -->
+  <div id="phase-processing" class="phase">
+    <div class="proc-wrap">
+      <div class="spinner"></div>
+      <div class="proc-title">ANALYZING YOUR FORM</div>
+      <div id="proc-status" class="proc-status">Loading video...</div>
+      <div class="prog-bar">
+        <div id="prog-fill" class="prog-fill"></div>
+      </div>
+      <div id="prog-pct" class="prog-pct">0%</div>
+    </div>
+  </div>
+
+  <!-- ── PHASE 3: RESULTS ── -->
+  <div id="phase-results" class="phase">
+    <div class="res-header">
+      <button class="btn-ghost" id="back-btn">← New analysis</button>
+      <span class="ex-tag" id="res-ex-tag"></span>
+    </div>
+
+    <div class="top-row">
+      <div class="kf-card">
+        <img id="kf-img" alt="Key frame" src="">
+        <div class="kf-badge">KEY FRAME</div>
+      </div>
+      <div class="score-card">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 96 96">
+            <circle class="r-bg" cx="48" cy="48" r="42"/>
+            <circle class="r-fg" id="r-fg" cx="48" cy="48" r="42"/>
+          </svg>
+          <div class="r-num-wrap">
+            <div class="r-num" id="r-num">—</div>
+            <div class="r-label">FORM SCORE</div>
+          </div>
+        </div>
+        <div class="summary-txt" id="summary-txt"></div>
+      </div>
+    </div>
+
+    <div class="fb-cards">
+      <div class="fb-card">
+        <div class="fb-title">✓ What's working</div>
+        <div id="pos-list"></div>
+      </div>
+      <div class="fb-card">
+        <div class="fb-title">⚠ Corrections needed</div>
+        <div id="corr-list"></div>
+      </div>
+      <div class="fb-card">
+        <div class="fb-title">◈ Corrective drill</div>
+        <div class="drill-txt" id="drill-txt"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── STATE ──
+  let videoFile = null;
+  let selectedEx = 'squat';
+
+  // ── DOM ──
+  const dropZone    = document.getElementById('drop-zone');
+  const fileInput   = document.getElementById('file-input');
+  const previewRow  = document.getElementById('preview-row');
+  const previewVid  = document.getElementById('preview-vid');
+  const analyzeBtn  = document.getElementById('analyze-btn');
+
+  // ── PHASE SWITCH ──
+  function showPhase(id) {
+    document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // ── PROGRESS ──
+  function setProgress(pct, status) {
+    document.getElementById('prog-fill').style.width = Math.round(pct) + '%';
+    document.getElementById('prog-pct').textContent  = Math.round(pct) + '%';
+    if (status) document.getElementById('proc-status').textContent = status;
+  }
+
+  // ── EXERCISE BUTTONS ──
+  document.querySelectorAll('.ex-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ex-btn').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      selectedEx = btn.dataset.ex;
+    });
+  });
+
+  // ── FILE HANDLING ──
+  dropZone.addEventListener('click',     () => fileInput.click());
+  dropZone.addEventListener('dragover',  e  => { e.preventDefault(); dropZone.classList.add('over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('video/')) loadFile(f);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) loadFile(fileInput.files[0]);
+  });
+
+  function loadFile(f) {
+    videoFile = f;
+    const name = f.name;
+    document.getElementById('vid-name').textContent =
+      name.length > 32 ? name.slice(0, 29) + '...' : name;
+
+    const url = URL.createObjectURL(f);
+    previewVid.src = url;
+    previewVid.onloadedmetadata = () => {
+      const dur  = Math.round(previewVid.duration);
+      const size = f.size > 1024 * 1024
+        ? (f.size / 1024 / 1024).toFixed(1) + ' MB'
+        : Math.round(f.size / 1024) + ' KB';
+      document.getElementById('vid-meta').textContent = dur + 's · ' + size;
+      previewVid.currentTime = 0.5;
+    };
+    previewVid.onseeked = () => {
+      previewRow.style.display = 'flex';
+    };
+    analyzeBtn.disabled = false;
+  }
+
+  // ── FRAME EXTRACTION ──
+  function seekTo(vid, t) {
+    return new Promise(resolve => {
+      const handler = () => { vid.removeEventListener('seeked', handler); resolve(); };
+      vid.addEventListener('seeked', handler);
+      vid.currentTime = t;
+    });
+  }
+
+  async function extractFrames(file, count = 5) {
+    return new Promise((resolve, reject) => {
+      const vid = document.createElement('video');
+      vid.muted   = true;
+      vid.preload = 'metadata';
+      vid.src     = URL.createObjectURL(file);
+
+      vid.addEventListener('loadedmetadata', async () => {
+        const maxW = 640;
+        const w    = Math.min(vid.videoWidth  || 640, maxW);
+        const h    = Math.round(w * (vid.videoHeight || 480) / (vid.videoWidth || 640));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+
+        const frames = [];
+        const dur    = vid.duration;
+
+        for (let i = 0; i < count; i++) {
+          const t = count === 1 ? dur * 0.5 : (i / (count - 1)) * dur;
+          await seekTo(vid, Math.min(t, dur - 0.05));
+          ctx.drawImage(vid, 0, 0, w, h);
+          frames.push(canvas.toDataURL('image/jpeg', 0.75).split(',')[1]);
+          setProgress(((i + 1) / count) * 48, `Extracting frame ${i + 1} of ${count}...`);
+        }
+
+        URL.revokeObjectURL(vid.src);
+        resolve(frames);
+      });
+
+      vid.addEventListener('error', reject);
+    });
+  }
+
+  // ── CLAUDE API CALL ──
+  async function analyzeForm(frames, exercise) {
+    setProgress(55, 'Sending to AI coach...');
+
+    const guides = {
+      'squat':           'Checkpoints: knee tracking over toes, depth (thighs at/below parallel), neutral spine, chest up, heels grounded.',
+      'deadlift':        'Checkpoints: neutral spine throughout, bar close to legs, hip hinge initiation, shoulders over bar at setup, full lockout.',
+      'bench press':     'Checkpoints: shoulder retraction/depression, elbow angle 45-75°, controlled bar path, feet grounded, full ROM.',
+      'pushup':          'Checkpoints: rigid plank (no sag or pike), elbow tracking, chest to floor, head neutral, full press-out.',
+      'lunge':           'Checkpoints: front knee over toe (no caving), both knees near 90°, upright torso, level hips throughout.',
+      'overhead press':  'Checkpoints: braced core, bar path arcing back over head, elbows under bar at start, full overhead lockout, neutral neck.'
+    };
+    const guide = guides[exercise] || 'Evaluate overall alignment, joint stacking, and movement quality.';
+
+    const imgBlocks = frames.map(f => ({
+      type:   'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: f }
+    }));
+
+    imgBlocks.push({
+      type: 'text',
+      text: `Exercise: ${exercise}\n${guide}\n\nThese ${frames.length} frames are evenly spaced across the movement. Identify the single most critical frame (e.g. bottom of squat, peak load moment) then analyze form at that frame.\n\nReply ONLY with valid JSON — no markdown, no backticks, no extra text:\n{"score":75,"key_frame":3,"summary":"One sentence overall assessment.","positives":["specific good thing","specific good thing"],"corrections":[{"joint":"Body part","issue":"What is specifically wrong","fix":"Concrete coaching cue to fix it","severity":"major"},{"joint":"Body part","issue":"What is wrong","fix":"How to fix","severity":"minor"}],"drill":"Name: Description of one targeted corrective drill to practice."}`
+    });
+
+    setProgress(65, 'AI is reviewing your form...');
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model:      'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system:     'You are an expert personal trainer and movement coach with deep knowledge of biomechanics and injury prevention. Analyze workout form from video frames with specific, actionable feedback. Respond ONLY with valid JSON — no preamble, no markdown, no backticks.',
+        messages:   [{ role: 'user', content: imgBlocks }]
+      })
+    });
+
+    setProgress(90, 'Processing results...');
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const raw   = data.content?.find(b => b.type === 'text')?.text || '{}';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  }
+
+  // ── RENDER RESULTS ──
+  function renderResults(result, frames) {
+    const idx = Math.max(0, Math.min((result.key_frame || 3) - 1, frames.length - 1));
+    document.getElementById('kf-img').src     = 'data:image/jpeg;base64,' + frames[idx];
+    document.getElementById('res-ex-tag').textContent = selectedEx;
+
+    const score = result.score || 0;
+    document.getElementById('r-num').textContent       = score;
+    document.getElementById('summary-txt').textContent = result.summary || '';
+
+    // Animated score ring  (r=42, circumference = 2π×42 ≈ 263.9)
+    const circ = 2 * Math.PI * 42;
+    const ring = document.getElementById('r-fg');
+    ring.style.strokeDasharray  = circ;
+    ring.style.strokeDashoffset = circ;
+    ring.style.stroke = score >= 80 ? 'var(--success)'
+                      : score >= 60 ? 'var(--warning)'
+                      : 'var(--danger)';
+    setTimeout(() => {
+      ring.style.strokeDashoffset = circ - (score / 100) * circ;
+    }, 120);
+
+    // Positives
+    const posList = document.getElementById('pos-list');
+    posList.innerHTML = (result.positives || [])
+      .map(p => `<div class="pos-item"><div class="pos-dot"></div><span>${p}</span></div>`)
+      .join('') || '<div class="empty-note">No specific positives noted.</div>';
+
+    // Corrections
+    const corrList = document.getElementById('corr-list');
+    corrList.innerHTML = (result.corrections || [])
+      .map(c => `
+        <div class="corr-item ${c.severity || 'minor'}">
+          <div class="corr-joint">${c.joint || ''}</div>
+          <div class="corr-issue">${c.issue || ''}</div>
+          <div class="corr-fix">→ ${c.fix || ''}</div>
+        </div>`)
+      .join('') || '<div class="empty-note">No major corrections — great form!</div>';
+
+    // Drill
+    document.getElementById('drill-txt').textContent = result.drill || 'No specific drill recommended.';
+  }
+
+  // ── MAIN FLOW ──
+  analyzeBtn.addEventListener('click', async () => {
+    if (!videoFile) return;
+    showPhase('phase-processing');
+    setProgress(0, 'Loading video...');
+
+    try {
+      const frames = await extractFrames(videoFile, 5);
+      const result = await analyzeForm(frames, selectedEx);
+      setProgress(100, 'Done!');
+      renderResults(result, frames);
+      setTimeout(() => showPhase('phase-results'), 280);
+    } catch (err) {
+      console.error(err);
+      const wrap = document.querySelector('.proc-wrap');
+      wrap.innerHTML += `<div class="err-msg">Error: ${err.message}</div>`;
+    }
+  });
+
+  document.getElementById('back-btn').addEventListener('click', () => showPhase('phase-upload'));
+</script>
+</body>
+</html>
